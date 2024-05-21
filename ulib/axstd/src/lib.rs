@@ -50,14 +50,16 @@
 #![feature(doc_cfg)]
 #![feature(doc_auto_cfg)]
 #![feature(ip_in_core)]
-
+#![feature(hashmap_internals)]
+#![feature(const_hash)]
+#![feature(hasher_prefixfree_extras)]
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
 #[cfg(feature = "alloc")]
 #[doc(no_inline)]
-pub use alloc::{boxed, collections, format, string, vec};
-
+pub use alloc::{boxed, format, string, vec};
+pub mod collections;
 #[doc(no_inline)]
 pub use core::{arch, cell, cmp, hint, marker, mem, ops, ptr, slice, str};
 

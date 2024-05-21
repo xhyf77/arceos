@@ -10,6 +10,10 @@ pub use core::time::Duration;
 #[derive(Clone, Copy)]
 pub struct Instant(AxTimeValue);
 
+pub fn current_ticks() -> u32 {
+    Instant::now().0.as_millis() as u32
+}
+
 impl Instant {
     /// Returns an instant corresponding to "now".
     pub fn now() -> Instant {
