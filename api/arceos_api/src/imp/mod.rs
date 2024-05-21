@@ -17,14 +17,18 @@ cfg_display! {
 }
 
 mod stdio {
-    use core::fmt;
 
+    use core::fmt;
     pub fn ax_console_read_byte() -> Option<u8> {
         axhal::console::getchar().map(|c| if c == b'\r' { b'\n' } else { c })
     }
 
     pub fn ax_console_write_bytes(buf: &[u8]) -> crate::AxResult<usize> {
+        let x1 = "\x1b[33m".as_bytes();
+        let x2 = "\x1b[0m".as_bytes();
+        axhal::console::write_bytes(x1);
         axhal::console::write_bytes(buf);
+        axhal::console::write_bytes(x2);
         Ok(buf.len())
     }
 
