@@ -304,6 +304,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "axdtb"
+version = "0.1.0"
+dependencies = [
+ "axlog",
+ "dtb_parser",
+]
+
+[[package]]
 name = "axerrno"
 version = "0.1.0"
 dependencies = [
@@ -465,6 +473,7 @@ dependencies = [
  "axconfig",
  "axdisplay",
  "axdriver",
+ "axdtb",
  "axfs",
  "axhal",
  "axlog",
@@ -927,6 +936,12 @@ dependencies = [
  "driver_net",
  "virtio-drivers",
 ]
+
+[[package]]
+name = "dtb_parser"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "876824758b5f1bafa63b75564decffd37e50c537ef4f3f6ec372ec2cdb88b52c"
 
 [[package]]
 name = "dw_apb_uart"
