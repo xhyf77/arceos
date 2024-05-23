@@ -12,6 +12,9 @@
 #![feature(result_option_inspect)]
 #![cfg_attr(feature = "allocator_api", feature(allocator_api))]
 
+#[macro_use]
+extern crate log;
+
 #[cfg(feature = "bitmap")]
 mod bitmap;
 #[cfg(feature = "bitmap")]
@@ -176,6 +179,9 @@ mod allocator_api {
         }
     }
 }
+
+mod early;
+pub use early::EarlyAllocator;
 
 #[cfg(feature = "allocator_api")]
 pub use allocator_api::AllocatorRc;

@@ -131,6 +131,7 @@ pub(crate) fn default_mmio_regions() -> impl Iterator<Item = MemRegion> {
 pub(crate) fn default_free_regions() -> impl Iterator<Item = MemRegion> {
     let start = virt_to_phys((_ekernel as usize).into()).align_up_4k();
     let end = PhysAddr::from(axconfig::PHYS_MEMORY_END).align_down_4k();
+    //info!("start-------- :{:0x} , end--------:{:0x}",start.as_usize() , end.as_usize() );
     core::iter::once(MemRegion {
         paddr: start,
         size: end.as_usize() - start.as_usize(),

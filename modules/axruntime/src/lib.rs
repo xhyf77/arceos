@@ -189,6 +189,12 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
         core::hint::spin_loop();
     }
 
+    {
+         let ga = axalloc::global_allocator();
+         info!("Used pages {} / Used bytes {}", ga.used_pages(), ga.used_bytes());
+     }
+     unsafe { main() };
+
     unsafe { main() };
 
     #[cfg(feature = "multitask")]
@@ -221,6 +227,9 @@ fn init_allocator() {
             break;
         }
     }
+
+    info!("--------------------------------------------");
+
     for r in memory_regions() {
         if r.flags.contains(MemRegionFlags::FREE) && r.paddr != max_region_paddr {
             axalloc::global_add_memory(phys_to_virt(r.paddr).as_usize(), r.size)
@@ -236,10 +245,11 @@ fn remap_kernel_memory() -> Result<(), axhal::paging::PagingError> {
     use lazy_init::LazyInit;
 
     static KERNEL_PAGE_TABLE: LazyInit<PageTable> = LazyInit::new();
-
+    info!("-------------remap_kernel_memory Start-----------------");
     if axhal::cpu::this_cpu_is_bsp() {
         let mut kernel_page_table = PageTable::try_new()?;
         for r in memory_regions() {
+            info!("{:0x}" , phys_to_virt(r.paddr).as_usize());
             kernel_page_table.map_region(
                 phys_to_virt(r.paddr),
                 r.paddr,
@@ -250,8 +260,8 @@ fn remap_kernel_memory() -> Result<(), axhal::paging::PagingError> {
         }
         KERNEL_PAGE_TABLE.init_by(kernel_page_table);
     }
-
     unsafe { axhal::arch::write_page_table_root(KERNEL_PAGE_TABLE.root_paddr()) };
+    info!("----------------remap_kernel_memory Done--------------");
     Ok(())
 }
 

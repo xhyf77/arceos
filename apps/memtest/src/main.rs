@@ -25,7 +25,7 @@ fn test_vec(rng: &mut impl RngCore) {
 fn test_hashmap_map(rng: &mut impl RngCore) {
     const N: usize = 50_000;
     let mut m = HashMap::new();
-    for _ in 0..N {
+    for i in 0..N {
         let value = rng.next_u32();
         let key = format!("key_{value}");
         m.insert(key, value);
