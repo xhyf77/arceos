@@ -69,7 +69,7 @@ members = [
     "apps/task/sleep",
     "apps/task/yield",
     "apps/task/priority",
-    "apps/task/tls", "modules/axdtb", "apps/ex5",
+    "apps/task/tls", "modules/axdtb", "apps/ex5", "apps/loader", "crates/apps_image",
 ]
 
 [profile.release]

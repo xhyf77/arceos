@@ -1,6 +1,9 @@
 # QEMU arguments
 
+qemu_args-apps :=  -drive if=pflash,file=$(CURDIR)/payload/apps.bin,format=raw,unit=1
+
 QEMU := qemu-system-$(ARCH)
+QEMU += $(qemu_args-apps)
 
 ifeq ($(BUS), mmio)
   vdev-suffix := device
@@ -47,7 +50,7 @@ endif
 
 qemu_args-$(GRAPHIC) += \
   -device virtio-gpu-$(vdev-suffix) -vga none \
-  -serial mon:stdio
+  -serial mon:stdio \ 
 
 ifeq ($(GRAPHIC), n)
   qemu_args-y += -nographic

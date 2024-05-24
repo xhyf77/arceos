@@ -32,6 +32,7 @@ mod mp;
 #[cfg(feature = "smp")]
 pub use self::mp::rust_main_secondary;
 
+extern crate axalloc;
 const LOGO: &str = r#"
        d8888                            .d88888b.   .d8888b.
       d88888                           d88P" "Y88b d88P  Y88b
@@ -209,10 +210,9 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
          let ga = axalloc::global_allocator();
          info!("Used pages {} / Used bytes {}", ga.used_pages(), ga.used_bytes());
      }
-     unsafe { main() };
-
+    
     unsafe { main() };
-
+    
     #[cfg(feature = "multitask")]
     axtask::exit(0);
     #[cfg(not(feature = "multitask"))]
