@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "axstd", no_std)]
 #![cfg_attr(feature = "axstd", no_main)]
-
+#![feature(asm_const)]
 #[cfg(feature = "axstd")]
 use axstd::println;
 #[cfg(feature = "axstd")]
@@ -21,32 +21,71 @@ fn main() {
 
     let code = unsafe { core::slice::from_raw_parts(apps_start , 8) };
 
+    const RUN_START: usize = 0xffff_ffc0_8010_0000;
 
     if apps_head.app1_size != 0 {
         println!("APP1_CONTENT");
         let mut code = unsafe { core::slice::from_raw_parts(apps_start.add(apps_head.app1_offset), apps_head.app1_size) };
+
+        println!("load code {:?}; address [{:?}]", code, code.as_ptr());
+
         let data : Vec<u8>;
         if code.len() % 8 != 0 {
             let x = 8 - ( code.len() % 8 );
             data = pad_slice_with_zeros(code,  x + code.len() );
             code = &data;
         }
+        let run_code = unsafe {
+            core::slice::from_raw_parts_mut(RUN_START as *mut u8, code.len())
+        };
+        run_code.copy_from_slice(code);
+        println!("run code {:?}; address [{:?}]", run_code, run_code.as_ptr());
+        
+        println!("====================APP1_START_RUN====================");
+        unsafe { core::arch::asm!("
+            li      t2, {run_start}
+            jalr    ra , t2 , 0 ",
+            run_start = const RUN_START,
+        )}
+        println!("====================APP1_RETURN====================");
+
+        println!("Content:");
         while code.len() != 0 {
-            println!("content: {:#x}", bytes_to_usize(&code[..8]));
+            println!("0x{:016x}", bytes_to_usize(&code[..8]));
             code = &code[8..code.len()];
         }
     }
     if apps_head.app2_size != 0 {
         println!("APP2_CONTENT");
         let mut code = unsafe { core::slice::from_raw_parts(apps_start.add(apps_head.app2_offset), apps_head.app2_size) };
+
+        println!("load code {:?}; address [{:?}]", code, code.as_ptr());
+
         let data : Vec<u8>;
         if code.len() % 8 != 0 {
             let x = 8 - ( code.len() % 8 );
             data = pad_slice_with_zeros(code,  x + code.len() );
             code = &data;
         }
+
+
+        let run_code = unsafe {
+            core::slice::from_raw_parts_mut(RUN_START as *mut u8, code.len())
+        };
+        run_code.copy_from_slice(code);
+        println!("run code {:?}; address [{:?}]", run_code, run_code.as_ptr());
+
+        println!("====================APP2_START_RUN====================");
+        unsafe { core::arch::asm!("
+            li      t2, {run_start}
+            jalr    ra , t2 , 0 ",
+            run_start = const RUN_START,
+        )}
+        println!("====================APP2_RETURN====================");
+
+        println!("Content:");
         while code.len() != 0 {
-            println!("content: {:#x}", bytes_to_usize(&code[..8]));
+            println!("0x{:016x}", bytes_to_usize(&code[..8]));
             code = &code[8..code.len()];
         }
     }

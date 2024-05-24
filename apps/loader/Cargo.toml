@@ -3,5 +3,6 @@ name = "loader"
 version = "0.1.0"
 edition = "2021"
 
+
 [dependencies]
-axstd = { path = "../../ulib/axstd" , features = ["alloc"], optional = true }
+axstd = { path = "../../ulib/axstd" , features = ["alloc" , "irq" ], optional = true }
