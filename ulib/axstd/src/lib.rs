@@ -66,7 +66,6 @@ pub use core::{arch, cell, cmp, hint, marker, mem, ops, ptr, slice, str};
 #[macro_use]
 mod macros;
 
-
 pub mod apps_image;
 pub mod env;
 pub mod io;
@@ -75,6 +74,8 @@ pub mod process;
 pub mod sync;
 pub mod thread;
 pub mod time;
+
+pub use process::exit;
 
 #[cfg(feature = "fs")]
 pub mod fs;
