@@ -12,6 +12,12 @@ use axstd::exit;
 const SYS_HELLO: usize = 1;
 const SYS_PUTCHAR: usize = 2;
 const SYS_SHUTDOWN: usize = 3;
+
+const CALL_HELLO: usize = 1;
+const CALL_PUTS: usize = 2;
+const CALL_SHUTDOWN: usize = 3;
+const CALL_PUTCHAR: usize = 4;
+
 static mut ABI_TABLE: [usize; 16] = [0; 16];
 static mut CALL_TABLE: [usize; 16] = [0; 16];
 const PLASH_START: usize = 0x22000000;
@@ -72,15 +78,18 @@ fn main() {
         core::ptr::read(apps_start as *const Image)
     };
 
-    let code = unsafe { core::slice::from_raw_parts(apps_start , 8) };
 
-    const RUN_START: usize = 0xffff_ffc0_8010_0000;
+    unsafe { init_app_page_table(); }
+    unsafe { switch_app_aspace(); }
+
+    const RUN_START_1: usize = 0x4010_0000;
+    const RUN_START_2: usize = 0x4020_0000;
 
     if apps_head.app1_size != 0 {
         let mut code = unsafe { core::slice::from_raw_parts(apps_start.add(apps_head.app1_offset), apps_head.app1_size) };
 
         let run_code = unsafe {
-            core::slice::from_raw_parts_mut(RUN_START as *mut u8, code.len())
+            core::slice::from_raw_parts_mut(RUN_START_1 as *mut u8, code.len())
         };
         run_code.copy_from_slice(code);
         
@@ -90,13 +99,14 @@ fn main() {
         register_abi(SYS_PUTCHAR, abi_putchar as usize);
         register_abi(SYS_SHUTDOWN, abi_shutdown as usize);
 
-        register_call(SYS_HELLO, print_hello as usize);
-        register_call(SYS_PUTCHAR, puts as usize);
-        register_call(SYS_SHUTDOWN, shutdown as usize);
-        
-        println!("Execute lab4 ...");
+        register_call(CALL_HELLO, print_hello as usize);
+        register_call(CALL_PUTS, puts as usize);
+        register_call(CALL_SHUTDOWN, shutdown as usize);
+        register_call(CALL_PUTCHAR, putchar as usize);
+        println!("Execute week2_lab5 ...");
     
-        // execute app
+        println!("====================APP1_START_RUN===================");
+        println!("APP1_ADDRESS : 0x{:0x}       APP1_SPACE_SIZE : 0x{:0x}" , RUN_START_1 , RUN_START_2 - RUN_START_1 );
         unsafe { core::arch::asm!("
             addi sp, sp, -16*8
             sd ra, 120(sp)
@@ -137,26 +147,66 @@ fn main() {
             ld a6, 8(sp)
             ld a7, 0(sp)
             addi sp, sp, 16*8",
-            run_start = const RUN_START,
+            run_start = const RUN_START_1,
             call_table = sym CALL_TABLE,
         )}
+        println!("====================APP1_EXIT===================");
     }
     if apps_head.app2_size != 0 {
         let mut code = unsafe { core::slice::from_raw_parts(apps_start.add(apps_head.app2_offset), apps_head.app2_size) };
 
         let run_code = unsafe {
-            core::slice::from_raw_parts_mut(RUN_START as *mut u8, code.len())
+            core::slice::from_raw_parts_mut(RUN_START_2 as *mut u8, code.len())
         };
         run_code.copy_from_slice(code);
 
 
         println!("====================APP2_START_RUN====================");
+        println!("APP2_ADDRESS : 0x{:0x}       APP2_SPACE_SIZE : 0x{:0x}" , RUN_START_2 , RUN_START_2 - RUN_START_1 );
         unsafe { core::arch::asm!("
+            addi sp, sp, -16*8
+            sd ra, 120(sp)
+            sd t0, 112(sp)
+            sd t1, 104(sp)
+            sd t2, 96(sp)
+            sd t3, 88(sp)
+            sd t4, 80(sp)
+            sd t5, 72(sp)
+            sd t6, 64(sp)
+            sd a0, 56(sp)
+            sd a1, 48(sp)
+            sd a2, 40(sp)
+            sd a3, 32(sp)
+            sd a4, 24(sp)
+            sd a5, 16(sp)
+            sd a6, 8(sp)
+            sd a7, 0(sp)
+
+            la      a7, {call_table}
             li      t2, {run_start}
-            jalr    ra , t2 , 0 ",
-            run_start = const RUN_START,
+            jalr    ra , t2 , 0
+
+            ld ra, 120(sp)
+            ld t0, 112(sp)
+            ld t1, 104(sp)
+            ld t2, 96(sp)
+            ld t3, 88(sp)
+            ld t4, 80(sp)
+            ld t5, 72(sp)
+            ld t6, 64(sp)
+            ld a0, 56(sp)
+            ld a1, 48(sp)
+            ld a2, 40(sp)
+            ld a3, 32(sp)
+            ld a4, 24(sp)
+            ld a5, 16(sp)
+            ld a6, 8(sp)
+            ld a7, 0(sp)
+            addi sp, sp, 16*8",
+            run_start = const RUN_START_2,
+            call_table = sym CALL_TABLE,
         )}
-        println!("====================APP2_RETURN====================");
+        println!("====================APP2_EXIT===================");
 
     }
 
@@ -166,4 +216,29 @@ fn main() {
 #[inline]
 fn bytes_to_usize(bytes: &[u8]) -> usize {
     usize::from_be_bytes(bytes.try_into().unwrap())
+}
+
+
+#[link_section = ".data.app_page_table"]
+static mut APP_PT_SV39: [u64; 512] = [0; 512];
+
+unsafe fn init_app_page_table() {
+    // 0x8000_0000..0xc000_0000, VRWX_GAD, 1G block
+    APP_PT_SV39[2] = (0x80000 << 10) | 0xef;
+    // 0xffff_ffc0_8000_0000..0xffff_ffc0_c000_0000, VRWX_GAD, 1G block
+    APP_PT_SV39[0x102] = (0x80000 << 10) | 0xef;
+
+    // 0x0000_0000..0x4000_0000, VRWX_GAD, 1G block
+    APP_PT_SV39[0] = (0x00000 << 10) | 0xef;
+
+    // For App aspace!
+    // 0x4000_0000..0x8000_0000, VRWX_GAD, 1G block
+    APP_PT_SV39[1] = (0x80000 << 10) | 0xef;
+}
+
+unsafe fn switch_app_aspace() {
+    use riscv::register::satp;
+    let page_table_root = APP_PT_SV39.as_ptr() as usize - axconfig::PHYS_VIRT_OFFSET;
+    satp::set(satp::Mode::Sv39, 0, page_table_root >> 12);
+    riscv::asm::sfence_vma_all();
 }
