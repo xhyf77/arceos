@@ -2,20 +2,50 @@
 #![cfg_attr(feature = "axstd", no_main)]
 #![feature(asm_const)]
 
+
 #[cfg(feature = "axstd")]
-use axstd::{apps_image::Image , println};
+use axstd::{apps_image::Image , println , print};
 #[cfg(feature = "axstd")]
-use axstd::{ vec::Vec , vec , exit};
+use axstd::exit;
 
 
 const SYS_HELLO: usize = 1;
 const SYS_PUTCHAR: usize = 2;
 const SYS_SHUTDOWN: usize = 3;
 static mut ABI_TABLE: [usize; 16] = [0; 16];
+static mut CALL_TABLE: [usize; 16] = [0; 16];
 const PLASH_START: usize = 0x22000000;
 
 fn register_abi(num: usize, handle: usize) {
     unsafe { ABI_TABLE[num] = handle; }
+}
+
+fn register_call(num: usize, handle: usize) {
+    unsafe { CALL_TABLE[num] = handle; }
+}
+
+fn print_hello(){
+    abi_hello();
+    return;
+}
+
+fn putchar(c: char){
+    abi_putchar(c);
+    return;
+}
+
+fn shutdown(){
+    abi_shutdown();
+}
+
+fn puts( s:usize , len:usize ){
+    let ptr = s as *const u8;
+    let st = unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts(ptr, len)) };
+    for i in st.chars(){
+        putchar(i);
+    }
+    println!("");
+    return;
 }
 
 fn abi_hello() {
@@ -24,7 +54,7 @@ fn abi_hello() {
 }
 
 fn abi_putchar(c: char) {
-    println!("[ABI:Print] {c}");
+    print!("{}" , c );
     return;
 }
 
@@ -48,8 +78,6 @@ fn main() {
 
     if apps_head.app1_size != 0 {
         let mut code = unsafe { core::slice::from_raw_parts(apps_start.add(apps_head.app1_offset), apps_head.app1_size) };
-        let mut data : Vec<u8> = vec![];
-        code = paddle_to_usize( &mut data , code );
 
         let run_code = unsafe {
             core::slice::from_raw_parts_mut(RUN_START as *mut u8, code.len())
@@ -61,9 +89,12 @@ fn main() {
         register_abi(SYS_HELLO, abi_hello as usize);
         register_abi(SYS_PUTCHAR, abi_putchar as usize);
         register_abi(SYS_SHUTDOWN, abi_shutdown as usize);
-    
-        println!("Execute Shut_down ...");
-        let arg0: u8 = b'A';
+
+        register_call(SYS_HELLO, print_hello as usize);
+        register_call(SYS_PUTCHAR, puts as usize);
+        register_call(SYS_SHUTDOWN, shutdown as usize);
+        
+        println!("Execute lab4 ...");
     
         // execute app
         unsafe { core::arch::asm!("
@@ -84,15 +115,11 @@ fn main() {
             sd a5, 16(sp)
             sd a6, 8(sp)
             sd a7, 0(sp)
-            li      t0, {abi_num}
-            slli    t0, t0, 3
-            la      t1, {abi_table}
-            add     t1, t1, t0
-            ld      t1, (t1)
-            jalr    ra , t1 , 0
-            
+
+            la      a7, {call_table}
             li      t2, {run_start}
             jalr    ra , t2 , 0
+
             ld ra, 120(sp)
             ld t0, 112(sp)
             ld t1, 104(sp)
@@ -111,25 +138,11 @@ fn main() {
             ld a7, 0(sp)
             addi sp, sp, 16*8",
             run_start = const RUN_START,
-            abi_table = sym ABI_TABLE,
-            //abi_num = const SYS_HELLO,
-            abi_num = const SYS_SHUTDOWN,
-            in("a0") arg0,
+            call_table = sym CALL_TABLE,
         )}
-
-        println!("====================APP1_START_RUN====================");
-        unsafe { core::arch::asm!("
-            li      t2, {run_start}
-            jalr    ra , t2 , 0 ",
-            run_start = const RUN_START,
-        )}
-        println!("====================APP1_RETURN====================");
     }
     if apps_head.app2_size != 0 {
         let mut code = unsafe { core::slice::from_raw_parts(apps_start.add(apps_head.app2_offset), apps_head.app2_size) };
-
-        let mut data : Vec<u8> = vec![];
-        code = paddle_to_usize( &mut data , code );
 
         let run_code = unsafe {
             core::slice::from_raw_parts_mut(RUN_START as *mut u8, code.len())
@@ -153,21 +166,4 @@ fn main() {
 #[inline]
 fn bytes_to_usize(bytes: &[u8]) -> usize {
     usize::from_be_bytes(bytes.try_into().unwrap())
-}
-
-fn pad_slice_with_zeros(slice: &[u8], target_len: usize) -> Vec<u8> {
-    let mut padded_vec = slice.to_vec();
-    padded_vec.resize(target_len, 0);
-    padded_vec
-}
-
-fn paddle_to_usize<'a: 'c, 'b: 'c , 'c>( data : &'a mut Vec<u8> , code : &'b [u8] ) -> &'c [u8]{
-    if code.len() % 8 != 0 {
-        let x = 8 - ( code.len() % 8 );
-        *data = pad_slice_with_zeros(code,  x + code.len() );
-        data
-    }
-    else{
-        code
-    }
 }
